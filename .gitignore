@@ -1,2 +1,29 @@
+# Secrets
 .env
-data/raw/
+.env.*
+!.env.example
+
+# Data: never commit raw data, only the small sample
+data/*
+!data/sample/
+!data/sample/**
+
+# SQL Server files and backups
+*.bak
+*.mdf
+*.ndf
+*.ldf
+*.trn
+
+# Power BI local cache (keep the PBIP project itself)
+**/.pbi/localSettings.json
+**/.pbi/cache.abf
+
+# Tools and OS
+.vscode/
+.venv/
+__pycache__/
+*.log
+Thumbs.db
+.DS_Store
+~$*
