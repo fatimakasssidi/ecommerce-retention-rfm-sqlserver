@@ -107,6 +107,7 @@ Each question has an owner, the source(s) that can answer it, and the planned ou
 **Notes**
 - **REES46 has no order table.** For this source, an order will be approximated from purchase events. The exact rule is decided in E1-03 and confirmed after profiling in E2.
 - **Segments and cohorts are computed per source,** because customers cannot be linked across the two platforms.
+- **REES46 covers a short period** (to confirm in E2). Questions about churn, retention and lifetime value (Q3, Q4, Q5, Q7, Q8) are therefore answered mainly with Online Retail II, while REES46 mainly answers funnel, conversion and volume questions (Q6, Q9).
 - Every question must be answerable with a measurable number. If a question cannot be tested with a query, it is rewritten or dropped.
 
 ## 6. KPIs and metric definitions
