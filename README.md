@@ -1,6 +1,6 @@
 # E-commerce Customer Retention & RFM: SQL Server Data Platform
 
-A production-style data platform in SQL Server that answers one business question: **who are our best customers, who is at risk of leaving, and how well do we retain customers over time?**
+A production-style data platform in SQL Server, built on a large e-commerce event stream, that answers four business questions: **who are our best customers, who is at risk of leaving, how well do we retain customers, and where do shoppers drop out?**
 
 > **Status:** work in progress. Results, benchmarks and the Power BI report will be added as each phase is completed.
 
@@ -17,22 +17,21 @@ Two databases separate the raw data from the clean data. A database is the unit 
 
 Data flows one way: **bronze, silver, gold, serving**. Naming rules are in [`docs/conventions.md`](docs/conventions.md).
 
-## Data sources
+## Data
 
-| Source | Role |
-|---|---|
-| Online Retail II (UCI) | Real UK store transactions: RFM, cohorts, churn and data quality work |
-| REES46 eCommerce behavior (Kaggle) | Large clickstream: performance engineering, bulk loading and funnel analysis |
+One public dataset: **REES46 eCommerce behavior data** (Kaggle), a real multi-category online store. Two monthly files (October and November 2019, about 15 GB) of events: product views, cart additions and purchases.
 
-Raw data is **not** included in this repository. Links, licenses and the data policy are in [`docs/data_sources.md`](docs/data_sources.md).
+Raw data is **not** included in this repository. Source, license and data policy are in [`docs/data_sources.md`](docs/data_sources.md).
+
+**Limits, stated up front:** the data covers about two months, so retention and churn are measured in weeks. There is no order ID (an order is approximated by a session with a purchase), no quantity and no cancellations.
 
 ## Scope
 
 **Part 1: SQL Server**
-- Multi-source ingestion, layered architecture, star schema with SCD Type 2
-- Incremental ETL with audit and error logging
+- Bulk loading of about 15 GB of CSV files into a layered architecture
+- Star schema with SCD Type 2 and incremental ETL with audit and error logging
 - Automated data quality checks with quarantine
-- RFM, cohort retention, churn, CLV and funnel analysis
+- RFM, weekly cohort retention, churn, funnel and cart abandonment analysis
 - Performance tuning with measured before/after results (indexes, columnstore, partitioning, Query Store)
 - Security (roles, row-level security, masking), backup and a tested restore
 - tSQLt tests and a GitHub Actions pipeline
@@ -42,16 +41,19 @@ Raw data is **not** included in this repository. Links, licenses and the data po
 - Model performance and row-level security
 - A report with insights and recommendations
 
+## Documentation
+
+| Document | Content |
+|---|---|
+| [`docs/business_requirements.md`](docs/business_requirements.md) | Business context, stakeholders, scope, questions |
+| [`docs/metric_dictionary.md`](docs/metric_dictionary.md) | One definition per KPI |
+| [`docs/rfm_rules.md`](docs/rfm_rules.md) | RFM scoring and segments |
+| [`docs/churn_definition.md`](docs/churn_definition.md) | Churn rule and validation |
+| [`docs/conventions.md`](docs/conventions.md) | Naming and T-SQL style |
+
 ## Repository structure
 
-```
-sql/            database scripts, one folder per layer
-tests/          tSQLt tests
-scripts/        PowerShell scripts (data download, deployment)
-docs/           documentation, diagrams, design decisions
-powerbi/        Power BI project (PBIP)
-data/sample/    small sample data for tests
-```
+![Repository structure](docs/repo_structure.svg)
 
 ## Run it locally
 
@@ -66,4 +68,4 @@ Connect with SSMS to `localhost,1434` (login `sa`). More setup steps will be add
 
 ## License
 
-The code is released under the MIT license (see `LICENSE`). The datasets keep their own licenses, listed in `docs/data_sources.md`.
+The code is released under the MIT license (see `LICENSE`). The dataset keeps its own license, listed in `docs/data_sources.md`.

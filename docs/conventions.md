@@ -43,23 +43,22 @@ The project follows the **Bronze / Silver / Gold** layering, split over two data
 |---|---|---|
 | `bronze` | Raw data | One table per source entity, loaded as-is. No cleaning, no typing |
 | `silver` | Cleaned data | Cleaned, typed, deduplicated and standardized data, still aligned with the source systems |
-| `gold` | Business data | Star schema (dimensions, facts), integrated across sources, plus report tables (RFM, cohorts, aggregates) |
+| `gold` | Business data | Star schema (dimensions, facts), plus report tables (RFM, cohorts, aggregates) |
 | `serving` | Consumption layer | Views over gold, consumed by Power BI. This is the contract (E11) |
 | `audit` | Operations | Load logs, ETL runs and errors, data quality rules, results and quarantine |
 
 Rules:
 - Every object lives in a named schema. Never create objects in `dbo`.
-- Always schema-qualify object names in code (`silver.online_retail_invoice`, never just `online_retail_invoice`).
+- Always schema-qualify object names in code (`silver.rees46_event`, never just `rees46_event`).
 - Data flows one way: `bronze` -> `silver` -> `gold` -> `serving`. A layer never reads from a layer after it.
-- Trade-offs of two databases: no foreign keys across databases, and the bronze-to-silver load uses three-part names (`ecommerce_rfm_raw.bronze.online_retail_transactions`). Three-part names are allowed **only** in the load procedure that reads from bronze.
+- Trade-offs of two databases: no foreign keys across databases, and the bronze-to-silver load uses three-part names (`ecommerce_rfm_raw.bronze.rees46_events`). Three-part names are allowed **only** in the load procedure that reads from bronze.
 
 ### Source systems
 
-Exactly two source systems exist. Use these names in table prefixes and in the `source_system` column:
+The project has one source system. Use its name as the prefix of bronze and silver tables:
 
 | Source system | Name |
 |---|---|
-| Online Retail II (UCI) | `online_retail` |
 | REES46 eCommerce behavior (Kaggle) | `rees46` |
 
 ---
@@ -69,14 +68,14 @@ Exactly two source systems exist. Use these names in table prefixes and in the `
 ### Bronze rules
 - Every name starts with the **source system name**, followed by the entity name as it appears in the source. No renaming to business terms.
 - Pattern: **`<source_system>_<entity>`**
-  - `<source_system>`: `online_retail` or `rees46`.
+  - `<source_system>`: `rees46`.
   - `<entity>`: the source file or entity name, converted to snake_case.
-  - Examples: `bronze.online_retail_transactions`, `bronze.rees46_events`.
-- Several files with the same structure (for example monthly REES46 files or the two Online Retail II sheets) go into **one table**, and the file name is stored in `dwh_source_file`.
+  - Example: `bronze.rees46_events`.
+- The monthly files (`2019-Oct.csv`, `2019-Nov.csv`) go into **one table**, and the file name is stored in `dwh_source_file`.
 
 ### Silver rules
-- Same pattern as bronze: **`<source_system>_<entity>`**. Tables stay aligned with the source systems, and sources are **not** merged here.
-- Silver is where flat files are split into real entities when it makes sense, for example `silver.online_retail_invoice`, `silver.online_retail_invoice_line`, `silver.online_retail_customer`, `silver.online_retail_product`, `silver.rees46_event`.
+- Same pattern as bronze: **`<source_system>_<entity>`**. Tables stay aligned with the source.
+- Silver is where the flat event file is typed, deduplicated and split into real entities when it makes sense, for example `silver.rees46_event` and `silver.rees46_product`.
 - Names are singular for entities, except when the source uses a plural for an event log.
 
 ### Gold rules
@@ -84,16 +83,15 @@ Exactly two source systems exist. Use these names in table prefixes and in the `
 - Pattern: **`<category>_<entity>`**
   - `<category>`: the role of the table (see the glossary).
   - `<entity>`: a descriptive business name (`customer`, `product`, `sales`).
-  - Sources are integrated here, so gold tables carry a `source_system` column.
-  - Examples: `gold.dim_customer`, `gold.dim_product`, `gold.dim_date`, `gold.fact_sales`, `gold.fact_events`, `gold.report_customer_rfm`.
+  - Examples: `gold.dim_customer`, `gold.dim_product`, `gold.dim_date`, `gold.fact_event`, `gold.fact_order`, `gold.report_customer_rfm`.
 
 ### Glossary of category patterns
 
 | Pattern | Meaning | Examples |
 |---|---|---|
 | `dim_` | Dimension table | `dim_customer`, `dim_product`, `dim_date`, `dim_source` |
-| `fact_` | Fact table | `fact_sales`, `fact_events` |
-| `report_` | Report, aggregate or analytics output table | `report_customer_rfm`, `report_cohort_retention`, `report_daily_events`, `report_sales_monthly` |
+| `fact_` | Fact table | `fact_event`, `fact_order` |
+| `report_` | Report, aggregate or analytics output table | `report_customer_rfm`, `report_cohort_retention`, `report_daily_events`, `report_funnel` |
 
 ### Audit tables
 `audit.load_log`, `audit.etl_run`, `audit.etl_error`, `audit.dq_rule`, `audit.dq_result`, `audit.quarantine_<entity>`.
@@ -105,7 +103,7 @@ Exactly two source systems exist. Use these names in table prefixes and in the `
 ### General
 - `snake_case`, lowercase.
 - Do not repeat the table name in a column unless it is a key: `customer.country`, not `customer.customer_country`.
-- **Bronze columns** keep the source column names, only converted to snake_case (`Customer ID` becomes `customer_id`, `InvoiceDate` becomes `invoice_date`). No business renaming in bronze.
+- **Bronze columns** keep the source column names, only converted to snake_case (`event_time`, `event_type`, `user_id` stay as they are). No business renaming in bronze.
 - **Silver and gold columns** follow the rules below.
 
 ### Surrogate keys
@@ -113,12 +111,12 @@ Exactly two source systems exist. Use these names in table prefixes and in the `
 - Pattern: **`<table_name>_key`**, integer identity.
   - `<table_name>`: the entity the key belongs to, without the category prefix.
   - Example: `customer_key` is the surrogate key of `gold.dim_customer`.
-- A foreign key in a fact has the same name as the key it points to: `gold.fact_sales.customer_key`.
+- A foreign key in a fact has the same name as the key it points to: `gold.fact_order.customer_key`.
 - The **unknown member** of every dimension has the key `-1`.
 
 ### Business keys
-- Pattern: **`<entity>_id`** (`customer_id`, `invoice_id`, `product_id`).
-- Customers from different sources can share the same `customer_id` value, so the unique identity of a customer is the pair (`source_system`, `customer_id`).
+- Pattern: **`<entity>_id`** (`customer_id`, `order_id`, `product_id`).
+- In gold, `customer_id` is the source `user_id`, and `order_id` is derived from the session of a purchase (the source has no order ID).
 
 ### Technical columns
 - Every technical (system-generated) column starts with **`dwh_`**, followed by a descriptive name.
@@ -138,7 +136,7 @@ Exactly two source systems exist. Use these names in table prefixes and in the `
 
 | Meaning | Rule | Example |
 |---|---|---|
-| Date (no time) | `<thing>_date`, type `date` | `invoice_date` |
+| Date (no time) | `<thing>_date`, type `date` | `order_date` |
 | Date and time | `<thing>_at`, type `datetime2`, UTC | `event_at` |
 | Boolean flag | `is_<something>`, type `bit` | `is_cancelled` |
 | Money | `<thing>_amount`, type `decimal(18,2)` | `line_amount` |
@@ -154,7 +152,7 @@ Exactly two source systems exist. Use these names in table prefixes and in the `
 ## 5. Views, stored procedures and functions
 
 ### Views
-- Views in `serving` mirror the gold table they expose and use the **same names** (`serving.dim_customer`, `serving.fact_sales`, `serving.report_customer_rfm`). The schema already tells you it is a view.
+- Views in `serving` mirror the gold table they expose and use the **same names** (`serving.dim_customer`, `serving.fact_order`, `serving.report_customer_rfm`). The schema already tells you it is a view.
 - Views elsewhere (helper views) use the pattern `<layer>.v_<name>`.
 - Renaming or removing a column in `serving` is a breaking change and must be documented in `docs/serving_contract.md`.
 
@@ -167,7 +165,7 @@ Exactly two source systems exist. Use these names in table prefixes and in the `
 | `silver.load_silver` | Cleans and loads bronze into silver |
 | `gold.load_gold` | Builds dimensions and facts from silver |
 
-- When a layer needs one procedure per entity, use **`load_<layer>_<entity>`**, and keep `load_<layer>` as the master procedure that calls them (for example `gold.load_gold_dim_customer`, `gold.load_gold_fact_sales`).
+- When a layer needs one procedure per entity, use **`load_<layer>_<entity>`**, and keep `load_<layer>` as the master procedure that calls them (for example `gold.load_gold_dim_customer`, `gold.load_gold_fact_order`).
 - **Other procedures** use **`<verb>_<object>`** with these verbs: `calc`, `run`, `check`, `rebuild`, `purge`.
   - Examples: `gold.calc_rfm`, `audit.run_dq_checks`, `audit.run_full_etl`.
 - **Functions:** `fn_<name>`. Prefer inline table-valued functions over scalar functions.
@@ -190,13 +188,13 @@ All names use snake_case with a prefix.
 | Object | Rule | Example |
 |---|---|---|
 | Primary key | `pk_<table>` | `pk_dim_customer` |
-| Foreign key | `fk_<child>_<parent>` | `fk_fact_sales_dim_customer` |
-| Unique constraint | `uq_<table>_<columns>` | `uq_dim_customer_source_system_customer_id` |
-| Check constraint | `ck_<table>_<rule>` | `ck_fact_sales_quantity_not_zero` |
+| Foreign key | `fk_<child>_<parent>` | `fk_fact_order_dim_customer` |
+| Unique constraint | `uq_<table>_<columns>` | `uq_dim_customer_customer_id` |
+| Check constraint | `ck_<table>_<rule>` | `ck_fact_order_amount_positive` |
 | Default constraint | `df_<table>_<column>` | `df_load_log_started_at` |
-| Nonclustered index | `ix_<table>_<columns>` | `ix_fact_sales_customer_key_date_key` |
-| Clustered columnstore | `cci_<table>` | `cci_fact_events` |
-| Nonclustered columnstore | `ncci_<table>` | `ncci_fact_sales` |
+| Nonclustered index | `ix_<table>_<columns>` | `ix_fact_order_customer_key_date_key` |
+| Clustered columnstore | `cci_<table>` | `cci_fact_event` |
+| Nonclustered columnstore | `ncci_<table>` | `ncci_fact_order` |
 
 - `INCLUDE` columns are not part of an index name.
 - Every index must be justified by a measured gain (E8). Record the reason in a comment above the `CREATE INDEX`.
@@ -229,7 +227,7 @@ SELECT
     c.customer_key,
     c.customer_id,
     SUM(f.line_amount) AS monetary_amount
-FROM gold.fact_sales AS f
+FROM gold.fact_order AS f
 INNER JOIN gold.dim_customer AS c
     ON c.customer_key = f.customer_key
 WHERE c.dwh_is_current = 1
@@ -245,7 +243,7 @@ GROUP BY
 - **Explicit column lists** on every `INSERT`.
 - **Never use `NOLOCK`** to fix a performance problem. Fix the cause.
 - Prefer CTEs for readability, but check the execution plan on large data.
-- Avoid functions on filtered columns in `WHERE` (for example `YEAR(invoice_date) = 2011`), because they prevent index use. Use a date range instead.
+- Avoid functions on filtered columns in `WHERE` (for example `YEAR(order_date) = 2019`), because they prevent index use. Use a date range instead.
 
 ### Procedure template
 
@@ -299,7 +297,7 @@ Layer   : gold
 | `sql/05_mart` | `sql/05_gold` |
 
 - **Commit message format:** `<TaskId>: <short description in the imperative>`
-  - Examples: `E0-04: add naming conventions`, `E3-02: load Online Retail II into bronze`.
+  - Examples: `E0-04: add naming conventions`, `E3-03: load the October file into bronze`.
 - One task = one or more commits that start with the same task ID.
 - Never commit `.env`, raw data files, backups (`.bak`) or credentials.
 - Mark a task as done in Notion only when its Definition of Done is met and the work is pushed.

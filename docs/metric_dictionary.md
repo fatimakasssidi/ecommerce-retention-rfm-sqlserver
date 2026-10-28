@@ -1,42 +1,41 @@
-# Metric Dictionary (v1)
+# Metric Dictionary (v2)
 
 Project: E-commerce Customer Retention & RFM (SQL Server)
 Task: E1-03
 
 **One definition per KPI.** The SQL in the gold layer and the DAX measures in Power BI must both follow this file (task E12-10). If a number differs between two places, this file decides which one is right.
 
-Status values: **Draft** (decided, but depends on an assumption to confirm during profiling in E2) and **Confirmed** (no open assumption).
+Status values: **Draft** (decided, but depends on an assumption to confirm during profiling in E3-07) and **Confirmed** (no open assumption).
 
 ---
 
 ## 1. Global rules
 
-1. **Per source.** Every KPI is computed per `source_system` (`online_retail`, `rees46`). Amounts from the two sources are never added together: they differ in currency and in time period.
-2. **Customer identity.** A customer is the pair (`source_system`, `customer_id`).
-3. **Missing customer ID.** Rows without a customer ID count in revenue and orders, but not in any customer KPI.
-4. **Time.** A month is the calendar month of the order date, using the timestamp as stored in the source (REES46 is in UTC). Each source has one fixed snapshot date, set in task E1-04.
-5. **Incomplete periods.** A partial last month is flagged and excluded from trends, cohorts and retention.
-6. **No silent exclusions.** Rows removed from the KPIs are counted and reported by the data quality KPIs (K20, K21).
+1. **One source.** All KPIs come from the REES46 events (October and November 2019).
+2. **Customer identity.** A customer is a `user_id`. Rows without a `user_id` count in revenue and orders, but not in any customer KPI.
+3. **Time.** All timestamps are UTC, as stored in the source. A **day** is the UTC calendar day. A **week** starts on Monday.
+4. **Partial periods.** The first and last weeks of the data are partial. They are flagged and excluded from retention and churn calculations, and shown with a marker in trends.
+5. **Black Friday.** The Black Friday period (29 November 2019) is flagged in the date dimension so its effect can be isolated.
+6. **No silent exclusions.** Rows removed from the KPIs are counted and reported by the data quality KPIs (K21, K22).
 7. **Source of the numbers.** KPIs are calculated from cleaned data (silver and gold), never from bronze.
 
 ---
 
-## 2. What the words mean in each source
+## 2. What the words mean in this source
 
-| Concept | Online Retail II (`online_retail`) | REES46 (`rees46`) |
-|---|---|---|
-| Sales line | One invoice line | One `purchase` event |
-| Order | One invoice number | One session (`user_session`) with at least one purchase. **Assumption:** there is no order ID |
-| Customer | `Customer ID` (some rows are empty) | `user_id` |
-| Quantity | `Quantity` | 1 per purchase event. **Assumption** |
-| Unit price | `Price` in pounds sterling (to confirm on the source page) | `price`, currency not stated, so treated as currency units |
-| Line amount | `quantity x price` | `price` |
-| Date | Invoice date and time, local, no time zone | `event_time`, UTC |
-| Cancellation | Invoice number starting with `C`, with a negative quantity | None expected |
+| Concept | Meaning in REES46 |
+|---|---|
+| Event | One row: `event_time`, `event_type`, `product_id`, `category_id`, `category_code`, `brand`, `price`, `user_id`, `user_session` |
+| Event types | `view`, `cart`, `purchase`. A `remove_from_cart` type is expected too (to confirm in E3-07) |
+| Sales line | One `purchase` event |
+| Order | One session (`user_session`) with at least one purchase. **Assumption:** there is no order ID |
+| Order date | The timestamp of the first purchase event of the session |
+| Customer | `user_id` |
+| Quantity | 1 per purchase event. **Assumption** |
+| Line amount | `price` (currency not stated, so "currency units") |
+| Cancellation or return | Not recorded |
 
-**Valid sales line**
-- *Online Retail II:* invoice does not start with `C`, quantity is above 0, price is above 0, and the stock code is a real product (the list of non-product codes such as postage or bank charges is fixed in E2).
-- *REES46:* `event_type = 'purchase'` and price is above 0.
+**Valid purchase:** `event_type = 'purchase'`, `price` above 0, and `user_id` not empty.
 
 ---
 
@@ -44,164 +43,162 @@ Status values: **Draft** (decided, but depends on an assumption to confirm durin
 
 ### Revenue and orders
 
-**K01 Gross sales amount**
-- **Definition:** value of all valid sales lines in the period.
-- **Formula:** `SUM(line_amount)` over valid sales lines.
-- **Grain:** source and month (also by product, country, segment).
-- **Edge cases:** cancellations and adjustment lines are excluded here, and shown in K02.
-- **Status:** Draft (non-product stock codes confirmed in E2).
+**K01 Revenue**
+- **Definition:** value of all valid purchases in the period.
+- **Formula:** `SUM(price)` over valid purchases.
+- **Grain:** day, week and month, also by category and brand.
+- **Edge cases:** the data has no cancellations or returns, so this is gross revenue. Price outliers are flagged in the data quality checks.
+- **Status:** Draft (price anomalies reviewed in E3-07).
 
-**K02 Cancelled amount**
-- **Definition:** value of cancellations in the period, shown as a positive number.
-- **Formula:** `ABS(SUM(line_amount))` over lines of invoices starting with `C`.
-- **Grain:** source and month.
-- **Edge cases:** a cancellation is counted in the month **of the cancellation invoice**, not the month of the original sale. This is simple and consistent, but the original sale is not always known. Returns and cancellations cannot be told apart in this source.
-- **Source:** Online Retail II. REES46 has none, so K02 is 0.
-- **Status:** Confirmed.
+**K02 Order count**
+- **Definition:** number of orders in the period.
+- **Formula:** `COUNT(DISTINCT user_session)` over sessions with at least one valid purchase.
+- **Grain:** day, week and month.
+- **Edge cases:** two real orders inside one session count as one. A session that crosses midnight is counted on the date of its first purchase.
+- **Status:** Draft (confirmed in E3-07).
 
-**K03 Net revenue**
-- **Definition:** sales kept after cancellations.
-- **Formula:** `K01 - K02`.
-- **Grain:** source and month.
-- **Edge cases:** can be negative in a month with unusually many cancellations. Lines with price 0 or below (adjustments, for example bad debt) are excluded and reported in K21.
-- **Status:** Draft.
-
-**K04 Order count**
-- **Definition:** number of valid orders in the period.
-- **Formula:** `COUNT(DISTINCT order_id)` over valid sales lines.
-- **Grain:** source and month.
-- **Edge cases:** *Online Retail II:* `order_id` is the invoice number. *REES46:* `order_id` is the session with at least one purchase, so two orders in one session count as one.
-- **Status:** Draft (REES46 order rule confirmed in E2).
-
-**K05 Average order value (AOV)**
-- **Definition:** average value of an order, before cancellations.
-- **Formula:** `K01 / K04`.
-- **Grain:** source and month (also by segment).
-- **Edge cases:** wholesale invoices create a long tail of very large orders, so the average can be pulled up. The median is shown next to it.
+**K03 Average order value (AOV)**
+- **Definition:** average value of an order.
+- **Formula:** `K01 / K02`. The median order value is shown next to it.
+- **Grain:** day, week and month, also by segment.
 - **Status:** Draft.
 
 ### Customers
 
-**K06 Active customers**
-- **Definition:** customers with at least one valid order in the period.
-- **Formula:** `COUNT(DISTINCT customer_id)` over valid orders with a customer ID.
-- **Grain:** source and month.
+**K04 Active users**
+- **Definition:** users with at least one event of any type in the period.
+- **Formula:** `COUNT(DISTINCT user_id)`.
+- **Grain:** day and week.
+- **Status:** Confirmed.
+
+**K05 Active buyers**
+- **Definition:** users with at least one valid order in the period.
+- **Formula:** `COUNT(DISTINCT user_id)` over valid orders.
+- **Grain:** day and week.
+- **Status:** Confirmed.
+
+**K06 New buyers**
+- **Definition:** users whose first valid order falls in the period.
+- **Formula:** users where `MIN(order_date)` is in the period.
+- **Grain:** day and week.
+- **Edge cases:** users who bought before the data starts appear as new in the first weeks. The first week is flagged as unreliable.
+- **Status:** Confirmed.
+
+**K07 Returning buyers**
+- **Formula:** `K05 - K06`.
+- **Status:** Confirmed.
+
+**K08 Repeat purchase rate**
+- **Definition:** share of buyers who bought more than once.
+- **Formula:** buyers with 2 or more valid orders / buyers with at least 1 valid order.
+- **Grain:** whole period, and by weekly cohort.
+- **Edge cases:** the period is short, so buyers who first bought late have had little time to buy again. A fair version is also reported: the **14-day repeat rate**, using only buyers whose first order is at least 14 days before the end of the data.
 - **Status:** Draft.
 
-**K07 New customers**
-- **Definition:** customers whose first valid order falls in the period.
-- **Formula:** customers where `MIN(order_date)` is in the period.
-- **Grain:** source and month.
-- **Edge cases:** the data starts at one point in time, so customers who already existed appear as "new" in the first month. The first month of each source is flagged as unreliable for new-customer and cohort analysis.
-- **Status:** Confirmed.
-
-**K08 Returning customers**
-- **Definition:** active customers who are not new in the period.
-- **Formula:** `K06 - K07`.
-- **Grain:** source and month.
-- **Status:** Confirmed.
-
-**K09 Repeat purchase rate**
-- **Definition:** share of customers who bought more than once.
-- **Formula:** customers with 2 or more valid orders / customers with at least 1 valid order, up to the snapshot date.
-- **Grain:** source (also by cohort and segment).
-- **Edge cases:** two orders on the same day count as two orders.
-- **Status:** Confirmed.
-
-**K10 Days to second order**
-- **Definition:** days between a customer's first and second valid order.
-- **Formula:** `DATEDIFF(day, first_order_date, second_order_date)`. Reported as the **median** and a distribution, not only the mean.
-- **Grain:** source and cohort.
-- **Edge cases:** only customers with 2 or more orders are included. This metric is used to justify the churn window (E1-05).
-- **Status:** Confirmed.
-
-**K11 Retention rate (by cohort)**
-- **Definition:** share of a monthly cohort that buys again in a later month.
-- **Cohort:** customers grouped by the month of their first valid order.
-- **Formula:** customers in cohort C with at least one valid order in month `C + k` / size of cohort C. Month 0 is 100% by definition.
-- **Grain:** source, cohort month and months since first order (k).
-- **Edge cases:** the cohort of the first month of data is unreliable (see K07), and incomplete months are excluded (global rule 5). *REES46 covers a short period (to confirm in E2-04), so retention is mainly measured on Online Retail II.*
+**K09 Days to second order**
+- **Definition:** days between a buyer's first and second valid order.
+- **Formula:** `DATEDIFF(day, first_order_date, second_order_date)`, reported as the **median** and a distribution.
+- **Edge cases:** only gaps shorter than the period can be observed, so long gaps are missing. This limits how the churn window is chosen (see `churn_definition.md`).
 - **Status:** Draft.
 
-**K12 Churned customer (flag)**
-- **Definition:** a customer who has not bought for longer than the churn window.
-- **Formula:** `days_since_last_order > N` at the snapshot date, where `N` is the churn window set in task E1-05 from the distribution in K10.
-- **Grain:** customer, per source.
-- **Edge cases:** `N` differs per source. REES46 can only support a short window because of its time span.
-- **Status:** Draft until E1-05.
+**K10 Purchase retention (weekly cohort)**
+- **Definition:** share of a weekly cohort of first-time buyers who buy again in a later week.
+- **Cohort:** buyers grouped by the week of their first valid order.
+- **Formula:** buyers of cohort C with at least one valid order in week `C + k` / size of cohort C. Week 0 is 100% by definition.
+- **Grain:** cohort week and weeks since first order (k).
+- **Edge cases:** the partial first week is excluded as a cohort, and partial weeks are excluded as observation weeks.
+- **Status:** Draft.
 
-**K13 Churn rate**
-- **Definition:** share of customers who are churned at the snapshot date.
-- **Formula:** churned customers (K12) / customers with at least 1 valid order.
-- **Grain:** source and month-end snapshot (for the trend).
-- **Status:** Draft until E1-05.
+**K11 Engagement retention (weekly cohort)**
+- **Definition:** share of a weekly cohort of new users who come back with any event in a later week.
+- **Cohort:** users grouped by the week of their first event.
+- **Formula:** users of cohort C with at least one event in week `C + k` / size of cohort C.
+- **Edge cases:** same as K10. Users first seen in the first week may have been active before the data starts.
+- **Status:** Draft.
 
-**K14 Customer lifetime value (historical CLV)**
-- **Definition:** total net revenue a customer has generated up to the snapshot date.
-- **Formula:** `SUM(net_revenue)` per customer. The segment CLV is the average of its customers.
-- **Grain:** customer, then segment and cohort.
-- **Edge cases:** this is **historical and revenue-based**. It is not a forecast, and it is not profit, because no cost or margin data exists.
+**K12 Churned buyer (flag)**
+- **Definition:** a buyer who has not ordered for longer than the churn window.
+- **Formula:** `days_since_last_order > N` at the snapshot date. The rule and the choice of `N` are in `churn_definition.md`.
+- **Grain:** buyer and snapshot date.
+- **Status:** Draft (N confirmed in E3-09).
+
+**K13 Churn rate (weekly)**
+- **Definition:** share of buyers who become churned during a week.
+- **Formula:** buyers who became churned during week W / buyers not churned at the start of week W. Reactivated buyers are reported next to it.
+- **Grain:** week.
+- **Status:** Draft (N confirmed in E3-09).
+
+**K14 Customer value to date**
+- **Definition:** total revenue a buyer has generated up to the snapshot date.
+- **Formula:** `SUM(price)` over the buyer's valid purchases. The segment value is the average of its buyers.
+- **Grain:** buyer, then segment and cohort.
+- **Edge cases:** historical and revenue-based. It is not a forecast and not profit, because no cost data exists. The period is about two months.
 - **Status:** Draft.
 
 **K15 Revenue share and Pareto**
-- **Definition:** share of net revenue from a segment, or cumulative share when customers are ranked by net revenue.
-- **Formula:** segment net revenue / total net revenue of customers with an ID. Pareto: cumulative net revenue share of customers ranked from highest to lowest.
-- **Grain:** source and segment.
-- **Edge cases:** revenue from rows without a customer ID is excluded from the denominator and reported separately.
+- **Definition:** share of revenue from a segment, or cumulative share when buyers are ranked by revenue.
+- **Formula:** segment revenue / revenue of buyers with a `user_id`. Pareto: cumulative revenue share of buyers ranked from highest to lowest.
+- **Grain:** segment, or buyer rank.
 - **Status:** Draft.
 
 **K16 RFM components**
-- **Definition:** recency, frequency and monetary values per customer.
-- **Formula:** defined in `docs/rfm_rules.md` (task E1-04).
-- **Status:** Open until E1-04.
+- **Definition:** recency, frequency and monetary values per buyer.
+- **Formula:** defined in `rfm_rules.md`.
+- **Status:** Draft.
 
-### Funnel (REES46)
+### Funnel
 
 A funnel counts **distinct sessions**. A session counts at a stage only if it also reached the earlier stage, so the funnel always goes down.
 
 **K17 View-to-cart rate**
 - **Formula:** sessions with a view and a cart event / sessions with a view event.
-- **Grain:** category and month.
+- **Grain:** category and week.
 
 **K18 Cart-to-purchase rate**
 - **Formula:** sessions with a view, a cart and a purchase / sessions with a view and a cart.
-- **Grain:** category and month.
+- **Grain:** category and week.
 
 **K19 Conversion rate**
 - **Formula:** sessions with a view and a purchase / sessions with a view.
-- **Grain:** category and month.
-- **Edge cases (K17 to K19):** missing category values form their own "unknown" group. Sessions that start before the data window are cut and can reduce the rates.
-- **Status:** Draft (confirmed after profiling in E2-04).
+- **Grain:** category and week.
+
+**K20 Cart abandonment rate**
+- **Definition:** share of sessions with a cart event that end without a purchase.
+- **Formula:** sessions with a cart event and no purchase / sessions with a cart event.
+- **Grain:** category and week. The list of abandoned sessions (with value of the carts) is an output of E7-11.
+- **Edge cases (K17 to K20):** missing categories form an "unknown" group. Sessions cut by the start or end of the data can lower the rates.
+- **Status:** Draft (confirmed in E3-07).
 
 ### Data quality
 
-**K20 Data quality pass rate**
+**K21 Data quality pass rate**
 - **Formula:** rows that pass a rule / rows checked by that rule.
-- **Grain:** source, rule and load run.
+- **Grain:** rule and load run.
 - **Status:** Confirmed.
 
-**K21 Excluded row rate**
-- **Formula:** rows removed from KPI calculations (cancellations treated separately, bad prices, non-product codes, duplicates) / rows loaded into silver.
-- **Grain:** source and reason.
+**K22 Excluded row rate**
+- **Formula:** rows removed from KPI calculations (duplicates, invalid prices, unknown event types, missing users) / rows loaded into silver.
+- **Grain:** reason and load run.
 - **Status:** Confirmed.
 
 ---
 
 ## 4. Edge-case register
 
-| Case | Source | Decision | Where it shows |
-|---|---|---|---|
-| Cancellation invoices (`C...`) | Online Retail II | Excluded from K01, shown in K02, counted in the month of cancellation | K02, K03 |
-| Returns | Online Retail II | Cannot be separated from cancellations | K02 |
-| Missing customer ID | Online Retail II | Kept in revenue and orders, excluded from customer KPIs | K06 to K15 |
-| Price of 0 or below (adjustments) | Online Retail II | Excluded from sales, reported | K21 |
-| Non-product stock codes (postage, fees) | Online Retail II | Excluded from product revenue, listed in E2 | K01, K21 |
-| Duplicate rows | Both | Removed in silver, counted | K21 |
-| Large wholesale orders | Online Retail II | Kept, flagged, median shown with AOV | K05 |
-| No order ID | REES46 | Order approximated by session with a purchase | K04 |
-| No quantity | REES46 | 1 unit per purchase event | K01 |
-| First month of data | Both | Flagged as unreliable for new customers and cohorts | K07, K11 |
-| Different currency and period | Both | Amounts are never added across sources | Global rule 1 |
+| Case | Decision | Where it shows |
+|---|---|---|
+| Identical duplicate rows | Removed in silver and counted | K22 |
+| Missing brand or category | Kept, grouped as "unknown" | K17 to K20 |
+| Price of 0 or below | Excluded from revenue, counted | K01, K22 |
+| Missing `user_id` | Kept in revenue and orders, excluded from customer KPIs | K04 to K16 |
+| Unknown event type | Excluded, counted | K22 |
+| Timestamp outside the data period | Excluded, counted | K22 |
+| No order ID | Order approximated by session with a purchase | K02 |
+| No quantity | 1 unit per purchase event | K01 |
+| No cancellations or returns | Revenue is gross | K01 |
+| First and last weeks | Partial, excluded from retention and churn | K06, K10 to K13 |
+| Black Friday | Flagged in the date dimension | K01, K02 |
+| One person with several IDs | Cannot be detected, listed as a limitation | All customer KPIs |
 
 ---
 
@@ -209,19 +206,23 @@ A funnel counts **distinct sessions**. A session counts at a stage only if it al
 
 | Item | Resolved in |
 |---|---|
-| List of non-product stock codes | E2-03 |
-| Confirm currency of Online Retail II prices | E2-02 |
-| REES46 order and quantity assumptions, and its time span | E2-04 |
-| Churn window `N` per source | E1-05 |
-| RFM windows and segment rules | E1-04 |
+| Exact first and last event dates and the time span | E3-07 |
+| Whether `remove_from_cart` exists and how to treat it | E3-07 |
+| Price anomalies and duplicate counts | E3-07 |
+| Whether sessions can contain several orders | E3-07 |
+| Churn window `N` | E3-09 |
+| RFM frequency thresholds | E3-09 |
 
 ---
 
-## 6. Decisions confirmed
+## 6. Decisions
 
-| ID | Decision | Confirmed on |
+| ID | Decision | Status |
 |---|---|---|
-| D1 | Cancellations are counted in the month of the cancellation invoice, not the month of the original sale | 2026-10-28 |
-| D2 | AOV is calculated before cancellations (K01 divided by K04), with the median shown next to it | 2026-10-28 |
-| D3 | A REES46 order is a session with at least one purchase, and each purchase event is 1 unit. Re-checked in E2-04 | 2026-10-28 |
-| D4 | Rows without a customer ID stay in revenue and orders, and are excluded from customer KPIs | 2026-10-28 |
+| D1 | Cancellations counted in the month of cancellation | **Superseded**: the single dataset has no cancellations |
+| D2 | AOV before cancellations | **Superseded**: same reason. AOV is revenue divided by orders |
+| D3 | An order is a session with at least one purchase, and each purchase event is 1 unit | Confirmed |
+| D4 | Rows without a customer ID stay in revenue and orders, and are excluded from customer KPIs | Confirmed |
+| D5 | Retention and churn are measured in weeks, with partial first and last weeks excluded | **To confirm** |
+| D6 | The churn window is provisional at 14 days, fixed after profiling (E3-09) | **To confirm** |
+| D7 | Amounts are reported as currency units, because the source gives no currency | **To confirm** |
