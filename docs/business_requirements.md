@@ -2,7 +2,7 @@
 
 Project: E-commerce Customer Retention & RFM (SQL Server)
 
-> This document grows during epic E1. Sections 1 to 4 are written in task E1-01. Sections 5 to 9 are placeholders for the next tasks.
+> This document grows during epic E1. Sections 1 to 4 are written in task E1-01 and section 5 in task E1-02. Sections 6 to 9 are placeholders for the next tasks.
 
 ---
 
@@ -71,7 +71,43 @@ The platform feeds a Power BI report that marketing and management use to decide
 
 ## 5. Key business questions
 
-*To be written in task E1-02.*
+Each question has an owner, the source(s) that can answer it, and the planned output. They are grouped by the three project questions.
+
+### Who are our best customers?
+
+| ID | Question | Asked by | Source | Planned output |
+|---|---|---|---|---|
+| Q1 | Which customers generate the most revenue, and what share of total revenue do the top 20% represent? | Marketing, Finance | Both | Pareto analysis (E7) |
+| Q2 | How many customers are in each RFM segment, and how much revenue does each segment contribute? | Marketing, Finance | Both | `gold.report_customer_rfm` and segment summary (E7) |
+| Q3 | What is the historical customer lifetime value, by segment and by first-purchase cohort? | Finance | Both | CLV view (E7) |
+
+### Who is at risk of leaving?
+
+| ID | Question | Asked by | Source | Planned output |
+|---|---|---|---|---|
+| Q4 | Which customers have stopped buying (churned) under the agreed rule, and which of them used to be high value? | Marketing | Both | Churn flag and at-risk list (E7) |
+| Q5 | What is the monthly churn rate, and how does it change over time? | CRM | Both | Churn trend (E7) |
+| Q6 | Where do shoppers drop out of the funnel (view, cart, purchase), by category? | Marketing | REES46 | Funnel analysis (E7) |
+
+### How well do we keep customers over time?
+
+| ID | Question | Asked by | Source | Planned output |
+|---|---|---|---|---|
+| Q7 | What share of customers buy again, and how quickly after their first purchase? | CRM | Both | Repeat purchase rate (E7) |
+| Q8 | How does retention evolve for each monthly cohort (month 1, 2, 3, and so on)? | CRM | Both | Cohort retention matrix (E7) |
+| Q9 | How do revenue, orders and average order value trend over time, including seasonality? | Finance | Both | Time analysis (E7) |
+| Q10 | How do customer behavior and value differ between the two platforms? | Leadership | Both | Source comparison (E7, E14) |
+
+### Trust in the numbers
+
+| ID | Question | Asked by | Source | Planned output |
+|---|---|---|---|---|
+| Q11 | How reliable is the data behind these answers (rows excluded, quality pass rate per source)? | Data platform owner | Both | DQ scorecard (E6) |
+
+**Notes**
+- **REES46 has no order table.** For this source, an order will be approximated from purchase events. The exact rule is decided in E1-03 and confirmed after profiling in E2.
+- **Segments and cohorts are computed per source,** because customers cannot be linked across the two platforms.
+- Every question must be answerable with a measurable number. If a question cannot be tested with a query, it is rewritten or dropped.
 
 ## 6. KPIs and metric definitions
 
