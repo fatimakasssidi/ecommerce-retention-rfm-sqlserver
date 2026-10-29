@@ -123,4 +123,34 @@ Defined in [`churn_definition.md`](churn_definition.md) (task E1-05). The value 
 
 ## 9. Success criteria
 
-*To be written in task E1-06.*
+The project is successful when **every High criterion** below is met and documented with a measured result. Numeric targets are **initial**: they are reviewed once after profiling (E3-07) and once after the performance baseline (E8-01), and any change is written down with its reason.
+
+| Priority | Area | Criterion | Target | Measured in |
+|---|---|---|---|---|
+| High | Business | Every key question (Q1 to Q12) has an answer from a view or query, with a result | 12 of 12 | E7, E14 |
+| High | Business | Every valid buyer receives an RFM segment | 100% of buyers with a `user_id` | E7-02 |
+| High | Business | The churn window is justified by the reactivation test | Test documented | E7-13 |
+| High | Data quality | No row is lost without an explanation | Bronze rows = silver rows + removed duplicates + quarantined rows | E6-05 |
+| High | Data quality | Every exclusion has a rule, a count and a reason | 100% of exclusions | E6-06 |
+| Medium | Data quality | Pass rate of critical rules (valid event type, valid timestamp, valid price) | 99% or more, adjusted after profiling | E6-04 |
+| High | ETL | The full pipeline can run twice with the same result | Identical row counts both times | E5-06 |
+| High | ETL | Loading the second month adds only the new rows | 0 duplicates after loading November | E5-04 |
+| Medium | ETL | A forced failure is logged and a re-run recovers | Test passes | E5-09 |
+| High | Performance | Heavy analytical queries are measured before and after tuning | 5 or more queries documented | E8-01, E8-09 |
+| High | Performance | Improvement on the tuned queries | At least 3 times faster each, and at least 2 of them 10 times faster | E8-09 |
+| Medium | Performance | Queries on the serving views | Under 5 seconds on the author's machine | E11-06 |
+| High | Testing | Every load and calculation procedure has at least one tSQLt test | 100% of procedures | E10-02 |
+| High | Testing | RFM and churn logic are tested on small known data | Tests pass | E10-02 |
+| High | Testing | The CI pipeline builds both databases and runs the tests | Green on `main` | E10-06 |
+| High | Reliability | A backup is restored under a new name and checked | Row counts match | E9-05 |
+| Medium | Security | A restricted role sees only what it is allowed to see | Role test passes | E9-01, E9-02 |
+| High | Security | No secret and no raw data in the repository | 0 findings in the final review | E15-07 |
+| High | Power BI | Key measures match the SQL results | Revenue, orders and buyers match exactly. Ratios match within rounding | E12-04 |
+| Medium | Power BI | Each report page opens quickly | Under 5 seconds | E13-02 |
+| High | Documentation | Someone can run the project from the README | Working database in about 15 minutes on a clean machine, after the downloads | E15-06 |
+| High | Documentation | The README shows measured results first | Real numbers, no placeholders | E15-01 |
+
+**How the targets were chosen**
+- Performance targets are relative (3 times, 10 times) because absolute times depend on the hardware. They are written as goals and checked against the real baseline.
+- Data quality thresholds depend on how clean the data really is, so they are revisited after profiling.
+- "Test coverage" for SQL means the share of procedures that have at least one test, which is measurable and honest, unlike a line-coverage percentage.
