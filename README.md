@@ -29,7 +29,9 @@ Raw data is **not** included in this repository. Source, license and data policy
 
 **Part 1: SQL Server**
 - Bulk loading of about 15 GB of CSV files into a layered architecture
-- Star schema with SCD Type 2 and incremental ETL with audit and error logging
+- A normalized silver layer with primary and foreign keys, and a star schema with SCD Type 2
+- Join and constraint experiments at scale (trusted foreign keys, join strategies, execution plans)
+- Incremental ETL with audit and error logging
 - Automated data quality checks with quarantine
 - RFM, weekly cohort retention, churn, funnel and cart abandonment analysis
 - Performance tuning with measured before/after results (indexes, columnstore, partitioning, Query Store)

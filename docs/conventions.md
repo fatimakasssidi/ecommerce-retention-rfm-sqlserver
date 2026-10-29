@@ -75,7 +75,7 @@ The project has one source system. Use its name as the prefix of bronze and silv
 
 ### Silver rules
 - Same pattern as bronze: **`<source_system>_<entity>`**. Tables stay aligned with the source.
-- Silver is where the flat event file is typed, deduplicated and split into real entities when it makes sense, for example `silver.rees46_event` and `silver.rees46_product`.
+- Silver is where the flat event file is typed, deduplicated and split into real entities when it makes sense, for example `silver.rees46_user`, `silver.rees46_session`, `silver.rees46_category`, `silver.rees46_brand`, `silver.rees46_product` and `silver.rees46_event`.
 - Names are singular for entities, except when the source uses a plural for an event log.
 
 ### Gold rules
@@ -83,14 +83,14 @@ The project has one source system. Use its name as the prefix of bronze and silv
 - Pattern: **`<category>_<entity>`**
   - `<category>`: the role of the table (see the glossary).
   - `<entity>`: a descriptive business name (`customer`, `product`, `sales`).
-  - Examples: `gold.dim_customer`, `gold.dim_product`, `gold.dim_date`, `gold.fact_event`, `gold.fact_order`, `gold.report_customer_rfm`.
+  - Examples: `gold.dim_customer`, `gold.dim_product`, `gold.dim_category`, `gold.dim_brand`, `gold.dim_date`, `gold.fact_event`, `gold.fact_order`, `gold.fact_order_item`, `gold.report_customer_rfm`.
 
 ### Glossary of category patterns
 
 | Pattern | Meaning | Examples |
 |---|---|---|
-| `dim_` | Dimension table | `dim_customer`, `dim_product`, `dim_date`, `dim_source` |
-| `fact_` | Fact table | `fact_event`, `fact_order` |
+| `dim_` | Dimension table | `dim_customer`, `dim_product`, `dim_category`, `dim_brand`, `dim_date` |
+| `fact_` | Fact table | `fact_event`, `fact_order`, `fact_order_item` |
 | `report_` | Report, aggregate or analytics output table | `report_customer_rfm`, `report_cohort_retention`, `report_daily_events`, `report_funnel` |
 
 ### Audit tables
