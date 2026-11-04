@@ -119,6 +119,7 @@ FROM
 ) AS p;
 
 SELECT TOP (10)
+    product_id,
     TRY_CONVERT(decimal(18,2), price) AS price_value,
     event_type,
     category_code,
@@ -126,6 +127,36 @@ SELECT TOP (10)
 FROM bronze.rees46_events_profile_sample
 WHERE TRY_CONVERT(decimal(18,2), price) IS NOT NULL
 ORDER BY TRY_CONVERT(decimal(18,2), price) DESC;
+
+-- 4b. Zero prices: which event types carry them?
+SELECT
+    event_type,
+    COUNT(*) AS zero_price_rows
+FROM bronze.rees46_events_profile_sample
+WHERE TRY_CONVERT(decimal(18,2), price) = 0
+GROUP BY event_type
+ORDER BY zero_price_rows DESC;
+
+-- 4b. Do products with a zero price also have a positive price in other events?
+SELECT
+    COUNT(*)                                                         AS products_with_zero_price,
+    SUM(CASE WHEN z.has_positive_price = 1 THEN 1 ELSE 0 END)        AS also_have_a_positive_price
+FROM
+(
+    SELECT
+        product_id,
+        MAX(CASE WHEN TRY_CONVERT(decimal(18,2), price) > 0 THEN 1 ELSE 0 END) AS has_positive_price
+    FROM bronze.rees46_events_profile_sample
+    GROUP BY product_id
+    HAVING SUM(CASE WHEN TRY_CONVERT(decimal(18,2), price) = 0 THEN 1 ELSE 0 END) > 0
+) AS z;
+
+-- 4b. A look at real zero-price rows
+SELECT TOP (10)
+    event_time, event_type, product_id, category_code, brand, price, user_id
+FROM bronze.rees46_events_profile_sample
+WHERE TRY_CONVERT(decimal(18,2), price) = 0
+ORDER BY event_time;
 
 /* ---------------------------------------------------------------
    5. Identical duplicate rows (all 9 columns equal)
@@ -190,6 +221,29 @@ FROM
 ) AS s
 GROUP BY CASE WHEN s.purchase_count >= 3 THEN '3 or more' ELSE CAST(s.purchase_count AS varchar(10)) END
 ORDER BY purchases_in_session;
+
+-- Sessions with several purchase events: do they happen in the same second (one order
+-- with several items) or at different times (possibly several orders)?
+SELECT
+    CASE WHEN s.distinct_times = 1 THEN 'same second'
+         WHEN s.distinct_times <= 3 THEN '2 to 3 different seconds'
+         ELSE '4 or more different seconds'
+    END AS purchase_timing,
+    COUNT(*) AS session_count
+FROM
+(
+    SELECT
+        user_session,
+        COUNT(DISTINCT event_time) AS distinct_times
+    FROM bronze.rees46_events_profile_sample
+    WHERE event_type = 'purchase'
+    GROUP BY user_session
+    HAVING COUNT(*) > 1
+) AS s
+GROUP BY CASE WHEN s.distinct_times = 1 THEN 'same second'
+              WHEN s.distinct_times <= 3 THEN '2 to 3 different seconds'
+              ELSE '4 or more different seconds'
+         END;
 
 -- Sessions with a purchase but no view in the sample (blocks cut sessions, so read with care)
 SELECT COUNT(*) AS purchase_sessions_without_view
@@ -259,6 +313,49 @@ FROM
     GROUP BY product_id
     HAVING COUNT(DISTINCT price) > 1
 ) AS p;
+
+-- 7b. Brand: for each product, is the brand never, sometimes or always missing?
+-- 'sometimes missing' products can be filled from their other events.
+SELECT
+    CASE WHEN p.missing_count = 0              THEN 'never missing'
+         WHEN p.missing_count = p.event_count  THEN 'always missing'
+         ELSE 'sometimes missing'
+    END AS brand_status,
+    COUNT(*) AS product_count
+FROM
+(
+    SELECT
+        product_id,
+        COUNT(*) AS event_count,
+        SUM(CASE WHEN brand IS NULL OR brand = '' THEN 1 ELSE 0 END) AS missing_count
+    FROM bronze.rees46_events_profile_sample
+    GROUP BY product_id
+) AS p
+GROUP BY CASE WHEN p.missing_count = 0              THEN 'never missing'
+              WHEN p.missing_count = p.event_count  THEN 'always missing'
+              ELSE 'sometimes missing'
+         END;
+
+-- 7b. Category code: same question
+SELECT
+    CASE WHEN p.missing_count = 0              THEN 'never missing'
+         WHEN p.missing_count = p.event_count  THEN 'always missing'
+         ELSE 'sometimes missing'
+    END AS category_code_status,
+    COUNT(*) AS product_count
+FROM
+(
+    SELECT
+        product_id,
+        COUNT(*) AS event_count,
+        SUM(CASE WHEN category_code IS NULL OR category_code = '' THEN 1 ELSE 0 END) AS missing_count
+    FROM bronze.rees46_events_profile_sample
+    GROUP BY product_id
+) AS p
+GROUP BY CASE WHEN p.missing_count = 0              THEN 'never missing'
+              WHEN p.missing_count = p.event_count  THEN 'always missing'
+              ELSE 'sometimes missing'
+         END;
 
 /* ---------------------------------------------------------------
    8. Category code: depth of the path
