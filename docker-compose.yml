@@ -7,7 +7,7 @@ services:
       MSSQL_PID: "Developer"
       MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
       MSSQL_AGENT_ENABLED: "true"
-      MSSQL_MEMORY_LIMIT_MB: "4096"
+      MSSQL_MEMORY_LIMIT_MB: "8192"
     ports:
       - "1434:1433"
     volumes:

@@ -20,7 +20,7 @@ This file describes the structure of the REES46 files. Each fact has a status: *
 | First event | `2019-10-01 00:00:00 UTC` | Verified | First rows of the October file |
 | Last event of October | `2019-10-31 23:59:59 UTC`, complete row | Verified | `tail -n 3` |
 | Last event of November | `2019-11-30 23:59:59 UTC`, complete row | Verified | `tail -n 3` |
-| First event of November | Expected `2019-11-01 00:00:00 UTC` | To verify | `head -n 2` on the November file |
+| First event of November | `2019-11-01 00:00:00 UTC`, right after the last event of October (`2019-10-31 23:59:59 UTC`): no gap and no overlap | Verified | `head -n 2` on the November file |
 | Fields per line | Exactly 9 on every line, header included | Verified | `awk -F, 'NF!=9'` gave 0 for both files |
 | Event types | `view`, `cart` and `purchase` seen. The Kaggle data card also lists `remove_from_cart`, not seen in the sample | Verified for 3 types, to verify on the full data for the 4th | `grep -m 3` on `cart` and `purchase`, the data card, profiling |
 | Encoding | UTF-8 expected (no BOM) | To verify | Check on non-ASCII values in E3-07 |
@@ -83,7 +83,7 @@ These come from what the columns mean. They are **assumptions to test** in profi
 - **Cart and purchase rows have the same 9 columns as views,** and a purchase carries its unit price, so revenue can be read from the purchase event.
 - **A product seems to keep the same price and category.** Product `5100816` appears in a cart event and in a purchase by another user with the same price and the same empty `category_code`. To be tested on more data.
 - **The first purchase of the file (00:02:14) comes before the first cart event (00:05:14).** The session may have started before the data begins, or purchases may happen without a cart event. This matters for the funnel rule, see the open items.
-- **The data covers 61 days,** from 1 October to 30 November 2019. The RFM snapshot date is therefore expected to be 2019-12-01 (confirmed in E3-07).
+- **The data covers 61 days,** from 1 October to 30 November 2019. Verified: the two files are contiguous (October ends at 23:59:59 on 31 October, November starts at 00:00:00 on 1 November). The RFM snapshot date is therefore expected to be 2019-12-01 (confirmed in E3-07).
 - **Weeks:** 1 October 2019 is a Tuesday and 30 November a Saturday, so with weeks starting on Monday the first and last weeks are partial and there are 7 complete weeks (7 October to 24 November). The Black Friday week (25 November to 1 December) is the partial last week.
 
 ---
@@ -104,7 +104,6 @@ These come from what the columns mean. They are **assumptions to test** in profi
 
 | Item | Resolved in |
 |---|---|
-| First event of November | E2-03 |
 | Do purchase sessions always contain a cart event? If not, the strict funnel rule (K17 to K20) must change | E2-05 and E3-07 |
 | Which event types really exist (`remove_from_cart`?) | E3-07 |
 | Rows with price of 0 or below | E3-07 |
