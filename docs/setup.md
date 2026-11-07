@@ -51,11 +51,16 @@ SELECT
 FROM sys.dm_os_sys_info;
 ```
 
-| Check | Before | After (to fill) |
+| Check | Before | After |
 |---|---|---|
-| Memory seen by the container (`free -m`, total) | 7,793 MB | |
-| Memory seen by SQL Server (`visible_memory_mb`) | | |
-| Target memory of SQL Server (`sql_target_mb`) | | |
+| Memory seen by the container (`free -m`, total) | 7,793 MB | **9,945 MB** |
+| Memory available to programs (`free -m`, available) | 6,034 MB | **8,474 MB** |
+| Memory seen by SQL Server (`visible_memory_mb`) | not measured (limit 4,096 MB) | **8,192 MB**, equal to `MSSQL_MEMORY_LIMIT_MB` |
+| Target memory of SQL Server (`sql_target_mb`) | not measured | **7,281 MB** |
+| Databases after the container was recreated | | `ecommerce_rfm_raw` and `ecommerce_rfm_dwh` both present |
+| Container status | | healthy |
+
+**Reading the results.** The virtual machine took the 10 GB limit, and SQL Server took the 8 GB limit. The target (7,281 MB) is below the limit because SQL Server keeps part of the limit for memory that is not counted in the target (for example thread stacks), so it is normal for the target to be lower. The memory to watch during loads is `available` in `free -m`.
 
 ### Going back
 
