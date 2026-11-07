@@ -22,7 +22,7 @@ This file describes the structure of the REES46 files. Each fact has a status: *
 | Last event of November | `2019-11-30 23:59:59 UTC`, complete row | Verified | `tail -n 3` |
 | First event of November | Expected `2019-11-01 00:00:00 UTC` | To verify | `head -n 2` on the November file |
 | Fields per line | Exactly 9 on every line, header included | Verified | `awk -F, 'NF!=9'` gave 0 for both files |
-| Event types | `view`, `cart` and `purchase` seen. `remove_from_cart` not seen yet | Verified for 3 types, to verify for the rest | `grep -m 3` on `cart` and `purchase`, then profiling |
+| Event types | `view`, `cart` and `purchase` seen. The Kaggle data card also lists `remove_from_cart`, not seen in the sample | Verified for 3 types, to verify on the full data for the 4th | `grep -m 3` on `cart` and `purchase`, the data card, profiling |
 | Encoding | UTF-8 expected (no BOM) | To verify | Check on non-ASCII values in E3-07 |
 | Order | Sorted by `event_time` in the rows seen | To verify | E3-07 |
 | Empty values | Empty fields between commas, seen in `brand` and `category_code` | Verified | Sample rows |

@@ -5,23 +5,23 @@ Task: E2-06
 
 This file says **what each field means** and which values are allowed. It does not repeat the file format (see `source_schema.md`), the evidence (see `profiling_rees46.md`) or the list of problems and decisions (see `issues_log.md`).
 
-**How to read the "Meaning" column.** The meanings below come from the column names and from the values seen on real rows. They are **inferred** until they are compared with the official description on the Kaggle data card. The last column tells which ones are still to confirm.
+**How to read the "Meaning" column.** The meanings below come from the column names and from the values seen on real rows. The last column gives the **official description from the Kaggle data card** (checked on 2026-11-07), and says whether it confirms the meaning.
 
 ---
 
 ## 1. Source fields (one row is one event)
 
-| Field | Meaning | Allowed values | Missing? | Silver type | Related issues | Official definition |
+| Field | Meaning | Allowed values | Missing? | Silver type | Related issues | Official definition (Kaggle data card) |
 |---|---|---|---|---|---|---|
-| `event_time` | Moment of the event, in UTC | Text like `2019-10-01 00:00:00 UTC`, between 1 October and 30 November 2019 | Never (0 in the sample) | `datetime2(0)` | I-01, I-17 | To confirm |
-| `event_type` | What the user did | `view`, `cart`, `purchase` seen. `remove_from_cart` not seen yet | Never (0) | `tinyint` key to a lookup table, or `varchar(20)` | I-16, I-17 | To confirm |
-| `product_id` | The product the event is about | Whole number, up to 8 digits seen | Never (0) | `int` | I-10 | To confirm |
-| `category_id` | The category of the product | Whole number, 19 digits | Never (0) | `bigint` | I-03 | To confirm |
-| `category_code` | Path of the category, levels separated by dots (for example `electronics.smartphone`) | 2 to 4 levels when present | **Yes: 32.51% of events**, because 388 of 648 categories never have a code | `varchar(100)`, split into up to 4 levels | I-03 | To confirm |
-| `brand` | Brand of the product, in lowercase | Free text, up to 30 characters seen | **Yes: 14.02% of events** | `varchar(100)` | I-02, I-10 | To confirm |
-| `price` | Unit price of the product at the event, currency not stated | Number with 2 decimals, 0 to 2574.07 seen. 0 appears on views and carts only | Never (0). **Zero in 0.22%** | `decimal(18,2)`, narrower if the full data allows | I-04, I-11, I-12 | To confirm |
-| `user_id` | The anonymous user who did the event | Whole number, 9 digits | Never (0) | `int` | I-06, I-13 | To confirm |
-| `user_session` | The visit (session) the event belongs to. A user has several sessions | UUID, 36 characters | Never (0) | `uniqueidentifier` | I-06, I-07 | To confirm |
+| `event_time` | Moment of the event, in UTC | Text like `2019-10-01 00:00:00 UTC`, between 1 October and 30 November 2019 | Never (0 in the sample) | `datetime2(0)` | I-01, I-17 | "When event was happened (UTC)". Confirmed: the time is in UTC |
+| `event_type` | What the user did | `view`, `cart`, `purchase` seen. `remove_from_cart` is listed by the source but not seen in the sample | Never (0) | `tinyint` key to a lookup table, or `varchar(20)` | I-16, I-17 | "Event type: one of [view, cart, remove_from_cart, purchase]". Confirmed, and **`remove_from_cart` is an official value** that is not in the sample |
+| `product_id` | The product the event is about | Whole number, up to 8 digits seen | Never (0) | `int` | I-10 | "Product ID". Confirmed |
+| `category_id` | The category of the product | Whole number, 19 digits | Never (0) | `bigint` | I-03 | "Product category ID". Confirmed |
+| `category_code` | Path of the category, levels separated by dots (for example `electronics.smartphone`) | 2 to 4 levels when present | **Yes: 32.51% of events**, because 388 of 648 categories never have a code | `varchar(100)`, split into up to 4 levels | I-03 | "Category meaningful name (if present)". Confirmed: the field is optional |
+| `brand` | Brand of the product, in lowercase | Free text, up to 30 characters seen | **Yes: 14.02% of events** | `varchar(100)` | I-02, I-10 | "Brand name in lower case (if present)". Confirmed: lowercase, and optional |
+| `price` | Unit price of the product at the event, currency not stated | Number with 2 decimals, 0 to 2574.07 seen. 0 appears on views and carts only | Never (0). **Zero in 0.22%** | `decimal(18,2)`, narrower if the full data allows | I-04, I-11, I-12 | "Product price". Confirmed, but it gives no currency and does not say whether it is the price at the time of the event |
+| `user_id` | The anonymous user who did the event | Whole number, 9 digits | Never (0) | `int` | I-06, I-13 | "Permanent user ID". Partly in tension with the data: 8 sessions show two ids (I-06) |
+| `user_session` | The visit (session) the event belongs to. A user has several sessions | UUID, 36 characters | Never (0) | `uniqueidentifier` | I-06, I-07 | "User session ID". Confirmed |
 
 Counts in the "Missing?" column come from the 560,000-row sample and are re-measured on the full data in E3-07.
 

@@ -26,7 +26,7 @@ Status values: **Draft** (decided, but depends on an assumption to confirm durin
 | Concept | Meaning in REES46 |
 |---|---|
 | Event | One row: `event_time`, `event_type`, `product_id`, `category_id`, `category_code`, `brand`, `price`, `user_id`, `user_session` |
-| Event types | `view`, `cart`, `purchase`. A `remove_from_cart` type is expected too (to confirm in E3-07) |
+| Event types | `view`, `cart`, `purchase`. The source also lists `remove_from_cart`, which is not in the sample (to check in E3-07) |
 | Sales line | One `purchase` event |
 | Order | One session (`user_session`) with at least one purchase. **Assumption:** there is no order ID |
 | Order date | The timestamp of the first purchase event of the session |
@@ -223,6 +223,6 @@ A funnel counts **distinct sessions**. A session counts at a stage only if it al
 | D2 | AOV before cancellations | **Superseded**: same reason. AOV is revenue divided by orders |
 | D3 | An order is a session with at least one purchase, and each purchase event is 1 unit | Confirmed |
 | D4 | Rows without a customer ID stay in revenue and orders, and are excluded from customer KPIs | Confirmed |
-| D5 | Retention and churn are measured in weeks, with partial first and last weeks excluded | **To confirm** |
-| D6 | The churn window is provisional at 14 days, fixed after profiling (E3-09) | **To confirm** |
-| D7 | Amounts are reported as currency units, because the source gives no currency | **To confirm** |
+| D5 | Retention and churn are measured in weeks, with partial first and last weeks excluded | Confirmed on 2026-10-29 |
+| D6 | The churn window is provisional at 14 days, fixed after profiling (E3-09) | Confirmed on 2026-10-29 |
+| D7 | Amounts are reported as currency units, because the source gives no currency | Confirmed on 2026-10-29 |
