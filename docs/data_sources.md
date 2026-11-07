@@ -54,3 +54,53 @@ The checksums show that the files have not changed since they were recorded. Kag
 - The Kaggle page describes the dataset as 7 months (October 2019 to April 2020) and 285 million events, while the download contains these two files. **Decision (2026-10-29): the project uses only these two files.** No additional months are downloaded.
 - The late-November period includes Black Friday.
 - Prices have no stated currency.
+
+---
+
+## 4. Storage plan
+
+Task E2-07. Every size below is an **estimate**, marked as such, and is replaced by a measured value when the data is loaded (E3-03 and E3-04).
+
+### Machine
+
+| Item | Value | Source |
+|---|---|---|
+| Free space on `C:` | 212.83 GB (240.59 GB used) | Measured, `Get-PSDrive C` |
+| RAM of the PC | 16 GB | Measured |
+| Docker Desktop, now | 2.31 GB RAM in use, 4.76 GB of disk used | Measured. The "limit 1006.85 GB" is the maximum size of the virtual disk, not a reservation |
+| SQL Server memory limit in `docker-compose.yml` | 4,096 MB | Our setting. To be reviewed in E0-06 |
+
+### Data volume
+
+About 104 to 112 million events (inference from the sample windows, exact count in E3-06). Planning figure: **110 million rows**. The CSV files are 14.7 GB, so a line is about 133 bytes on average.
+
+### Estimated sizes
+
+| Item | Estimate | Basis |
+|---|---|---|
+| CSV files | 14.7 GB | Measured |
+| `bronze.rees46_events` (heap, text columns) | about **20 GB** (19 to 22) | About 180 bytes per row: about 125 bytes of text, 20 bytes for variable-length columns, 24 for the technical columns, and the row header |
+| Log of the raw database | 1 to 2 GB | Minimal logging: `SIMPLE` recovery, `TABLOCK`, heap. Without these conditions it could approach the size of the data |
+| Silver events, rowstore | about 6 GB | About 54 bytes per row with strict types |
+| Each nonclustered index on silver or gold | about 2 GB | Key plus row locator, about 20 bytes per row |
+| Gold event fact | 2 GB (columnstore) to 6 GB (rowstore) | Columnstore compression is typically several times, measured in E8 |
+| Other gold and silver tables | under 2 GB | Products, categories, customers, sessions, orders, reports |
+| Log of the dwh database | 5 to 15 GB | A single transaction of 110 million rows would log about as much as the data. Loads are done in batches (E5-01) |
+| `tempdb` | up to about 20 GB | Sorts and hash joins over 110 million rows can spill to disk when memory is small |
+| Backups of the dwh database | 10 to 20 GB | Two full backups, to be stored outside the Docker volume (E9) |
+
+**Peak need for new space: about 75 to 100 GB**, all stages counted together. Available: 212.83 GB. The margin is about 110 GB or more, so the project fits on this PC.
+
+### Rules
+
+1. **Minimum free space: 60 GB.** If `C:` falls below it, stop loading and clean up before continuing.
+2. **Load in batches** so the transaction log stays small.
+3. **The Docker virtual disk grows but does not shrink by itself** after data is deleted, so the space it takes is the peak, not the current use. Check it with `docker system df`.
+4. **Calibrate the estimate with the sample.** `EXEC sp_spaceused` on the 560,000-row profiling table gives the real bytes per row, to extrapolate to 110 million rows (add about 24 bytes per row for the three technical columns).
+
+### Where the data lives
+
+| Data | Location |
+|---|---|
+| CSV files | `data\raw\rees46\` in the repository folder on `C:` (mounted read-only into the container) |
+| Databases | The Docker volume `ecommerce-retention-rfm-sqlserver_sqlserver_data`, inside Docker's WSL2 virtual disk on `C:` |
