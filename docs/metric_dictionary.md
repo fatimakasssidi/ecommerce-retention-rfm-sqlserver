@@ -148,7 +148,7 @@ Status values: **Draft** (decided, but depends on an assumption to confirm durin
 
 ### Funnel
 
-A funnel counts **distinct sessions**. A session counts at a stage only if it also reached the earlier stage, so the funnel always goes down.
+A funnel counts **distinct sessions**. Each stage counts the sessions that reached **that stage**, without requiring the earlier stages (decision D8). The share of purchase sessions without a cart event is reported next to the funnel.
 
 **K17 View-to-cart rate**
 - **Formula:** sessions with a view and a cart event / sessions with a view event.
@@ -226,3 +226,4 @@ A funnel counts **distinct sessions**. A session counts at a stage only if it al
 | D5 | Retention and churn are measured in weeks, with partial first and last weeks excluded | Confirmed on 2026-10-29 |
 | D6 | The churn window is provisional at 14 days, fixed after profiling (E3-09) | Confirmed on 2026-10-29 |
 | D7 | Amounts are reported as currency units, because the source gives no currency | Confirmed on 2026-10-29 |
+| D8 | Funnel: each stage counts the sessions that reached it, without requiring the earlier stages. The share of purchase sessions without a cart event is reported (33% on the full data) | Confirmed |
