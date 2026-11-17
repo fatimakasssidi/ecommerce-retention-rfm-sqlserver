@@ -50,3 +50,21 @@ Every issue has an **impact** and a **decision**. The numbers come from the 560,
 | Open | I-09, I-15, I-16 |
 
 The three open issues are closed in E3-02 (I-15) and E3-07 and E3-09 (I-09, I-16).
+
+---
+
+## 3. Cleaning rules with their counts (E6-06)
+
+Every exclusion has a rule, a count and a place where it is checked.
+
+| Rule | What it removes or changes | Count (full data) | Where it is counted |
+|---|---|---|---|
+| Duplicate row | Identical copies after the first (keeps one) | 130,739 | `audit.silver_rejects` (`duplicate_row`), DQ-13 |
+| Bad user session | Event without a usable session | 12 | `audit.silver_rejects` (`bad_user_session`), DQ-13 |
+| Bad purchase price | Purchase with a price of 0 or below | 0 | `audit.silver_rejects` (`bad_purchase_price`), DQ-02 |
+| Zero price on view or cart | Kept, price set to unknown (NULL) | 256,761 | DQ-05 |
+| Brand unknown | Kept, brand = unknown (-1) | About 15,000 products | DQ-10 |
+| Category without code | Kept, labelled unclassified | About 388 categories | DQ-11 |
+| Session with two users | Kept, customer = user of the first purchase | 940 sessions | DQ-12 |
+
+The rules are enforced by `audit.run_dq_checks`, and the latest status is in `audit.v_dq_scorecard`.
