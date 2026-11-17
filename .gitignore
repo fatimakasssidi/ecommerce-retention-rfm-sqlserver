@@ -7,6 +7,7 @@
 data/*
 !data/sample/
 !data/sample/**
+tests traking/
 
 # SQL Server files and backups
 *.bak
