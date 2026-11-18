@@ -63,8 +63,8 @@ Every exclusion has a rule, a count and a place where it is checked.
 | Bad user session | Event without a usable session | 12 | `audit.silver_rejects` (`bad_user_session`), DQ-13 |
 | Bad purchase price | Purchase with a price of 0 or below | 0 | `audit.silver_rejects` (`bad_purchase_price`), DQ-02 |
 | Zero price on view or cart | Kept, price set to unknown (NULL) | 256,761 | DQ-05 |
-| Brand unknown | Kept, brand = unknown (-1) | About 15,000 products | DQ-10 |
-| Category without code | Kept, labelled unclassified | About 388 categories | DQ-11 |
-| Session with two users | Kept, customer = user of the first purchase | 940 sessions | DQ-12 |
+| Brand unknown | Kept, brand = unknown (-1) | 48,590 of 206,876 products (23.5%) | DQ-10 |
+| Category without code | Kept, labelled unclassified | 118,185 of 206,876 products (57.1%) | DQ-11 |
+| Session with two users | Kept, customer = user of the first purchase | 939 sessions of 23,016,650 | DQ-12 |
 
 The rules are enforced by `audit.run_dq_checks`, and the latest status is in `audit.v_dq_scorecard`.
