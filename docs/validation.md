@@ -94,3 +94,74 @@ whether the sale brings back buyers who were silent. Report both numbers.
 - The segment used for "high value" is the segment at the snapshot date (simplified, see churn.sql).
 - Cart value ignores unknown prices (NULL), so it is a lower bound.
 - The funnel is counted per stage (D8), so stages are not strictly nested.
+
+## 6. Results (recorded in E7-13)
+
+### 6.1 Totals reconcile
+
+| Check | Result | Status |
+|---|---|---|
+| Order revenue = purchase lines (gold) | 505,126,293.44 = 505,126,293.44 | PASS |
+| Segment summary customers = RFM report | 697,470 = 697,470 | PASS |
+| Segment summary revenue = RFM revenue | 505,126,293.44 = 505,126,293.44 | PASS |
+| Category ranking revenue = order revenue | 505,126,293.44 | PASS |
+| RFM buyers = scored customers | 697,470 = 697,470 | PASS |
+
+### 6.2 Cohorts are coherent
+
+| Check | Result | Status |
+|---|---|---|
+| Purchase cohorts, week 0 not 100% | 0 | PASS |
+| Purchase cohorts, retention above 100% | 0 | PASS |
+| Engagement cohorts, week 0 not 100% | 0 | PASS |
+
+### 6.3 Funnel sanity (D8)
+
+| Check | Result | Status |
+|---|---|---|
+| View-to-purchase above 100% | 0 | PASS |
+| Cart rate above 100% | Counted when the funnel is read; explained by D8 | Documented |
+
+### 6.4 Churn window (D6): decision
+
+| Churn window | Churned buyers (2 Nov) | Reactivated | Reactivation |
+|---|---|---|---|
+| 14 days | 178,328 | 33,644 | 18.87% |
+| 21 days | 96,032 | 16,113 | 16.78% |
+
+Both fall in the 10% to 25% band. The 21-day window is lower and closer to the 10% threshold, so it is
+chosen. Decision: **N = 21 days**. The 1 December snapshot was run with 21 days.
+
+Limits: the reactivation test covers 4 weeks only, and Black Friday has not been separated in this rate.
+
+### 6.5 Point-in-time facts
+
+| Check | Result | Status |
+|---|---|---|
+| Events outside their customer version | 0 | PASS |
+| Totals unchanged after the reload | 109,819,992 events, 1,402,758 orders | PASS |
+| Customer 512386086 (328 orders) | 18 orders as unknown (1 to 6 Oct), 310 as Champions (7 Oct to 30 Nov), none outside their version | PASS |
+
+### 6.6 Black Friday
+
+Ratio to baseline (average day, 28 Oct to 24 Nov = 1.0):
+- 29 November (Black Friday): 1.02
+- neighbouring days: 0.67 to 0.86
+
+Conclusion: no clear Black Friday uplift against the period baseline. The gap with its neighbours is real,
+but the baseline is inflated by October. A same-weekday comparison is needed before any claim. Single event,
+single observation.
+
+### 6.7 Overall status
+
+| Area | Status |
+|---|---|
+| Reconciliation | Validated |
+| Cohorts | Validated |
+| Funnel | Validated (sanity) |
+| Churn window | Decided: 21 days |
+| Point-in-time facts | Validated (one customer with a change, plus totals) |
+| Black Friday | Measured, not concluded |
+
+Open limit: the point-in-time proof uses one customer with one change. A second, multi-change customer would
+strengthen it.

@@ -46,7 +46,7 @@ The data covers only about two months, so the window must be short. The rule nee
 
 | Item | Provisional value |
 |---|---|
-| `N` | 14 days. To be fixed between 14 and 21 days in E3-09 |
+| `N` | **21 days (decided in E7-13).** Reactivation test: 14 days gave 18.87%, 21 days gave 16.78%, both in the 10% to 25% band. The longer window is chosen |
 
 ---
 
@@ -101,3 +101,11 @@ These limits are a starting point to adjust with the real results. The test resu
 | Time span and the final distribution of gaps between orders | E3-07 |
 | Final `N` (14 to 21 days) | E3-09 |
 | Result of the validation test | E7-13 |
+
+---
+
+## 9. Decision (E7-13)
+
+N = 21 days. Evidence: reactivation test at snapshot 2 November 2019, 14 days gave 18.87%, 21 days gave 16.78%.
+Both are in the 10% to 25% band, and the longer window is closer to the 10% threshold. Limits: a 4-week test
+window and Black Friday not separated.
